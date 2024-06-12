@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genesys Cloud User Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 60px;
+            border-radius: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 850px;
+            max-width: 100%;
+            height: 800px;
+            overflow-y: auto;
+        }
+        h1, h2 {
+            color: #333333;
+            text-align: center;
+        }
+        input[type="text"], select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .checkbox-group {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        #results, #copy-results {
+            margin-top: 20px;
+        }
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .result-table th, .result-table td {
+            border: 1px solid #cccccc;
+            padding: 10px;
+            text-align: left;
+        }
+        .result-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Genesys Cloud User Search</h1>
+        <form id="search-form">
+            <input type="text" id="search-text" name="search_text" placeholder="Enter User Name or Email">
+            <select id="user-dropdown" name="selected_user_id">
+                <option value="">Select a User</option>
+            </select>
+            <button type="submit">Search</button>
+        </form>
+        <div id="results"></div>
+        
+        <h2>Copy Details</h2>
+        <form id="copy-form">
+            <label for="from-user-dropdown">Copy from:</label>
+            <select id="from-user-dropdown" name="from_user_id">
+                <option value="">Select a User</option>
+            </select>
+            <label for="to-user-dropdown">Copy to:</label>
+            <select id="to-user-dropdown" name="to_user_id">
+                <option value="">Select a User</option>
+            </select>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="copy_queues" value="1"> Copy Queues</label>
+                <label><input type="checkbox" name="copy_skills" value="1"> Copy Skills</label>
+                <label><input type="checkbox" name="copy_roles" value="1"> Copy Roles</label>
+                <label><input type="checkbox" name="copy_phone" value="1"> Copy Phone</label>
+            </div>
+            <button type="submit">Copy</button>
+        </form>
+        <div id="copy-results"></div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Fetch and populate user dropdowns
+            $.ajax({
+                type: 'GET',
+                url: '/get_users',
+                success: function(response) {
+                    console.log("User dropdown response:", response);
+                    let userDropdown = $('#user-dropdown');
+                    let fromUserDropdown = $('#from-user-dropdown');
+                    let toUserDropdown = $('#to-user-dropdown');
+                    response.forEach(user => {
+                        userDropdown.append(new Option(user.name, user.id));
+                        fromUserDropdown.append(new Option(user.name, user.id));
+                        toUserDropdown.append(new Option(user.name, user.id));
+                    });
+                },
+                error: function(error) {
+                    console.log("Error fetching users:", error);
+                }
+            });
+
+            // Handle form submission for search
+            $('#search-form').on('submit', function(e) {
+                e.preventDefault();
+                let searchText = $('#search-text').val();
+                let selectedUserId = $('#user-dropdown').val();
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/search',
+                    data: { search_text: searchText, selected_user_id: selectedUserId },
+                    success: function(response) {
+                        console.log("Search response:", response);  // Debugging line
+                        let resultsDiv = $('#results');
+                        resultsDiv.empty();
+                        if (response.length > 0) {
+                            let table = $('<table class="result-table"></table>');
+                            table.append('<tr><th>Name</th><th>Queues</th><th>Skills</th><th>Roles</th></tr>');
+                            response.forEach(user => {
+                                let queues = user.queues.join(', ');
+                                let skills = user.skills.join(', ');
+                                let roles = user.roles.join(', ');
+                                table.append(`<tr><td>${user.name}</td><td>${queues}</td><td>${skills}</td><td>${roles}</td></tr>`);
+                            });
+                            resultsDiv.append(table);
+                        } else {
+                            resultsDiv.append('<p>No users found</p>');
+                        }
+                    },
+                    error: function(error) {
+                        console.log("Error during search:", error);
+                    }
+                });
+            });
+
+            // Handle form submission for copy
+            $('#copy-form').on('submit', function(e) {
+                e.preventDefault();
+                let fromUserId = $('#from-user-dropdown').val();
+                let toUserId = $('#to-user-dropdown').val();
+                let copyQueues = $('#copy-form input[name="copy_queues"]').is(':checked') ? '1' : '0';
+                let copySkills = $('#copy-form input[name="copy_skills"]').is(':checked') ? '1' : '0';
+                let copyRoles = $('#copy-form input[name="copy_roles"]').is(':checked') ? '1' : '0';
+                let copyPhone = $('#copy-form input[name="copy_phone"]').is(':checked') ? '1' : '0';
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/copy',
+                    data: { 
+                        from_user_id: fromUserId, 
+                        to_user_id: toUserId,
+                        copy_queues: copyQueues,
+                        copy_skills: copySkills,
+                        copy_roles: copyRoles,
+                        copy_phone: copyPhone
+                    },
+                    success: function(response) {
+                        console.log("Copy response:", response);  // Debugging line
+                        let copyResultsDiv = $('#copy-results');
+                        copyResultsDiv.empty();
+                        if (response.status === 'success') {
+                            if (copyQueues === '1') {
+                                copyResultsDiv.append('<p style="font-weight: bold; font-size: larger;">Details copied successfully for queues!</p>');
+                            }
+                            if (copySkills === '1') {
+                                copyResultsDiv.append('<p style="font-weight: bold; font-size: larger;">Details copied successfully for skills!</p>');
+                            }
+                            if (copyRoles === '1') {
+                                copyResultsDiv.append('<p style="font-weight: bold; font-size: larger;">Details copied successfully for roles!</p>');
+                            }
+                            if (copyPhone === '1') {
+                                copyResultsDiv.append('<p style="font-weight: bold; font-size: larger;">Phone created successfully</p>');
+                            }
+                        } else {
+                            copyResultsDiv.append(`<p>Error: ${response.message}</p>`);
+                        }
+                    },
+                    error: function(error) {
+                        console.log("Error during copy:", error);
+                        let copyResultsDiv = $('#copy-results');
+                        copyResultsDiv.empty();
+                        copyResultsDiv.append('<p>Failed to copy details: ' + error.responseJSON.message + '</p>');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

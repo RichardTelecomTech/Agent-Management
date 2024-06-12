@@ -1,0 +1,10 @@
+Flask==2.0.2
+gunicorn==20.1.0
+requests==2.26.0
+PureCloudPlatformClientV2==48.0.0
+flask-cors==3.0.10
+Werkzeug==2.0.3
+requests
+requests_oauthlib
+requests-oauthlib
+PureCloudPlatformClientV2

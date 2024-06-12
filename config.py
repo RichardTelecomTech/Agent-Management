@@ -1,0 +1,5 @@
+CLIENT_ID = 'Enter Client ID'
+CLIENT_SECRET = 'Enter client secret'
+REDIRECT_URI = 'https://agentmanager-e4003b10643b.herokuapp.com/callback'
+AUTHORIZATION_BASE_URL = 'https://login.mypurecloud.com.au/oauth/authorize'
+TOKEN_URL = 'https://login.mypurecloud.com.au/oauth/token'
